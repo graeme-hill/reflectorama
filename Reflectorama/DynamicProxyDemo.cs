@@ -18,13 +18,14 @@ namespace Reflectorama
 
             testProxy.BeforeSet(p => p.FirstName, (oldValue, newValue) =>
             {
-                Console.WriteLine("changing FirstName from {0} to {1}", oldValue ?? "<NULL>", newValue);
+                Console.WriteLine("changing FirstName from {0} to {1}", oldValue ?? "<NULL>", newValue ?? "<NULL>");
             });
 
             test.FirstName = "Graeme";
             test.LastName = "Hill";
             test.FirstName = "foo";
             test.FirstName = "bar";
+            test.FirstName = null;
 
             Console.ReadKey();
         }
@@ -54,12 +55,10 @@ namespace Reflectorama
         {
             get
             {
-                //_proxy.BeforeGet("FirstName");
                 return base.FirstName;
             }
             set
             {
-                //_proxy.BeforeSet("FirstName");
                 base.FirstName = value;
             }
         }
