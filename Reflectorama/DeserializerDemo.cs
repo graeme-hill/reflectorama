@@ -10,41 +10,36 @@ namespace Reflectorama
 {
     public class DeserializerDemo
     {
-        private const int DESERIALIZATION_SAMPLES = 1000;
-        private const int NUM_PROGRAMMERS = 1000;
+        public const int DESERIALIZATION_SAMPLES = 1000;
+        public const int NUM_PROGRAMMERS = 10000;
 
         public static void Run()
         {
-            var testData = GenerateProgrammerData();
+            var testData = GenerateProgrammerData(NUM_PROGRAMMERS);
 
-            var start = DateTime.Now;
+            Stopwatch.BenchmarkOperation("Hard coded", DESERIALIZATION_SAMPLES, () =>
+            {
+                StaticDeserializer.DeserializeProgrammers(testData);
+            });
 
-            for (var i = 0; i < DESERIALIZATION_SAMPLES; i++)
-                GenericProgrammerArrayDeserializer.Deserialize(testData, (dict) => StaticDeserializer.DeserializeProgrammer(dict));
+            Stopwatch.BenchmarkOperation("Simple reflection", DESERIALIZATION_SAMPLES, () =>
+            {
+                SimpleDynamicDeserializer.Deserialize<Programmer>(testData);
+            });
 
-            var afterStatic = DateTime.Now;
+            Stopwatch.BenchmarkOperation("Dynamic method", DESERIALIZATION_SAMPLES, () =>
+            {
+                FastDynamicDeserializer.Deserialize<Programmer>(testData);
+            });
 
-            for (var i = 0; i < DESERIALIZATION_SAMPLES; i++)
-                GenericProgrammerArrayDeserializer.Deserialize(testData, (dict) => SimpleDynamicDeserializer.Deserialize<Programmer>(dict));
-
-            var afterSimpleDynamic = DateTime.Now;
-
-            for (var i = 0; i < DESERIALIZATION_SAMPLES; i++)
-                GenericProgrammerArrayDeserializer.Deserialize(testData, (dict) => FastDynamicDeserializer.Deserialize<Programmer>(dict));
-
-            var afterFastDynamic = DateTime.Now;
-
-            Console.WriteLine("static: " + (afterStatic - start).TotalMilliseconds);
-            Console.WriteLine("simple dynamic: " + (afterSimpleDynamic - afterStatic).TotalMilliseconds);
-            Console.WriteLine("fast dynamic: " + (afterFastDynamic - afterSimpleDynamic).TotalMilliseconds);
-
+            Console.WriteLine("\n -- finished --");
             Console.ReadKey();
         }
 
-        private static Dictionary<string, string>[] GenerateProgrammerData()
+        private static Dictionary<string, string>[] GenerateProgrammerData(int numProgrammers)
         {
             var programmers = new List<Dictionary<string, string>>();
-            for (var i = 0; i < NUM_PROGRAMMERS; i++)
+            for (var i = 0; i < numProgrammers; i++)
             {
                 programmers.Add(new Dictionary<string, string>
                     {
@@ -70,23 +65,16 @@ namespace Reflectorama
         public string Archetype { get; set; }
     }
 
-    public static class GenericProgrammerArrayDeserializer
-    {
-        public static Programmer[] Deserialize(Dictionary<string, string>[] data, Func<Dictionary<string, string>, Programmer> individualDeserializer)
-        {
-            return data.Select(d => individualDeserializer(d)).ToArray();
-        }
-    }
-
     public static class SimpleDynamicDeserializer
     {
         private static Dictionary<Type, SimpleDynamicDeserializationMachine> _cachedMachines = new Dictionary<Type, SimpleDynamicDeserializationMachine>();
 
-        public static T Deserialize<T>(Dictionary<string, string> dict)
+        public static T[] Deserialize<T>(Dictionary<string, string>[] dicts)
         {
             if (!_cachedMachines.ContainsKey(typeof(T)))
                 _cachedMachines[typeof(T)] = new SimpleDynamicDeserializationMachine(typeof(T));
-            return (T)_cachedMachines[typeof(T)].Deserialize(dict);
+            var machine = _cachedMachines[typeof(T)];
+            return dicts.Select(d => (T)machine.Deserialize(d)).ToArray();
         }
 
         private class SimpleDynamicDeserializationMachine
@@ -116,11 +104,12 @@ namespace Reflectorama
     {
         private static Dictionary<Type, FastDynamicDeserializationMachine> _cachedMachines = new Dictionary<Type, FastDynamicDeserializationMachine>();
 
-        public static T Deserialize<T>(Dictionary<string, string> dict)
+        public static T[] Deserialize<T>(Dictionary<string, string>[] dicts)
         {
             if (!_cachedMachines.ContainsKey(typeof(T)))
                 _cachedMachines[typeof(T)] = new FastDynamicDeserializationMachine(typeof(T));
-            return (T)_cachedMachines[typeof(T)].Deserialize(dict);
+            var machine = _cachedMachines[typeof(T)];
+            return dicts.Select(d => (T)machine.Deserialize(d)).ToArray();
         }
 
         private class FastDynamicDeserializationMachine
@@ -172,17 +161,30 @@ namespace Reflectorama
 
     public static class StaticDeserializer
     {
-        public static Programmer DeserializeProgrammer(Dictionary<string, string> dict)
+        public static Programmer[] DeserializeProgrammers(Dictionary<string, string>[] dicts)
         {
-            return new Programmer()
+            return dicts.Select(d => new Programmer()
             {
-                FirstName = dict["FirstName"],
-                MiddleName = dict["MiddleName"],
-                LastName = dict["LastName"],
-                FavoriteLanguage = dict["FavoriteLanguage"],
-                Gender = dict["Gender"],
-                Archetype = dict["Archetype"]
-            };
+                FirstName = d["FirstName"],
+                MiddleName = d["MiddleName"],
+                LastName = d["LastName"],
+                FavoriteLanguage = d["FavoriteLanguage"],
+                Gender = d["Gender"],
+                Archetype = d["Archetype"]
+            }).ToArray();
+        }
+    }
+
+    public static class Stopwatch
+    {
+        public static void BenchmarkOperation(string description, int times, Action action)
+        {
+            Console.Write(description + "...");
+            var start = DateTime.Now;
+            for (var i = 0; i < times; i++)
+                action();
+            var end = DateTime.Now;
+            Console.WriteLine(" finished in " + (int)(end - start).TotalMilliseconds + " milliseconds");
         }
     }
 }

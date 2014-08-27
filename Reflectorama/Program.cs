@@ -10,9 +10,9 @@ namespace Reflectorama
     {
         static void Main(string[] args)
         {
-            //FunctionCallDemo.Run();
+            FunctionCallDemo.Run();
             //DynamicProxyDemo.Run();
-            DeserializerDemo.Run();
+            //DeserializerDemo.Run();
         }
     }
 }
