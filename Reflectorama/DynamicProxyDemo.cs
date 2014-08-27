@@ -16,7 +16,7 @@ namespace Reflectorama
             var testProxy = DynamicProxy.CreateProxy<Person>();
             var test = testProxy.Object;
 
-            testProxy.BeforeSet(p => p.FirstName, (object oldValue, object newValue) =>
+            testProxy.BeforeSet(p => p.FirstName, (oldValue, newValue) =>
             {
                 Console.WriteLine("changing FirstName from {0} to {1}", oldValue ?? "<NULL>", newValue);
             });
@@ -26,7 +26,6 @@ namespace Reflectorama
             test.FirstName = "foo";
             test.FirstName = "bar";
 
-            Console.WriteLine(test);
             Console.ReadKey();
         }
     }
